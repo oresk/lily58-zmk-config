@@ -60,3 +60,35 @@
 - Then the display is not the cause; next steps: enable USB logging
   (`-DCONFIG_ZMK_USB_LOGGING=y`) build to capture the fault, and/or pin ZMK to
   `v0.3.0` to rule out a `main` regression.
+---
+
+## Resolution (same day, 2026-07-21)
+
+### Root cause confirmed
+The peripheral-battery fork of nice-view-gem (oresk/peripheral-battery) was the
+cause of both BT flapping and USB freezing. The fork added:
+- Extra BLE event subscriptions (peripheral battery + split status) on the
+  central, triggering screen redraws on every peripheral battery/split event
+- Dual battery bar rendering (twice the draw calls per refresh)
+- BLE polling traffic (`CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING`,
+  `CONFIG_ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_PROXY`)
+
+These combined with LVGL's software-rotation `rotate_canvas()` overloaded the
+nice!nano's CPU on every redraw, destabilising both transports.
+
+### Final state
+- **west.yml**: upstream `M165437/nice-view-gem` `main` (LVGL9-compatible)
+- **build.yaml**: left shield includes `nice_view_adapter nice_view_gem`
+- **conf**: `CONFIG_ZMK_DISPLAY=y`, `CONFIG_ZMK_DISPLAY_STATUS_SCREEN_CUSTOM=y`,
+  deep sleep enabled (`CONFIG_ZMK_SLEEP=y`, 5 min idle timeout)
+- **BT**: stable, no flapping
+- **USB**: stable, no freezes
+- **Display**: working (upstream gem — single battery, layer name, output icons)
+- **Split**: halves paired and communicating
+- **Sleep**: to be verified after long idle
+
+### If dual battery bars are wanted later
+Re-add peripheral battery support on a stable foundation:
+1. Pin ZMK to `v0.3.0` first (west.yml + build.yml `@v0.3.0`)
+2. Then re-introduce battery bars with smaller subscriptions, or use a
+   polling interval instead of per-event redraws
