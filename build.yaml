@@ -27,7 +27,7 @@ include:
 
 # choc lily58
   - board: nice_nano//zmk
-    shield: splitkb_aurora_lily58_left nice_view_adapter nice_view_gem
+    shield: splitkb_aurora_lily58_left
   - board: nice_nano//zmk
     shield: splitkb_aurora_lily58_right
   - board: nice_nano//zmk
